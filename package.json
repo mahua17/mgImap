@@ -1,0 +1,25 @@
+{
+  "name": "mgimap",
+  "version": "0.1.0",
+  "description": "node imap proxy",
+  "main": "./lib/Connection",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahua17/mgImap.git"
+  },
+  "keywords": [
+    "node",
+    "imap",
+    "proxy"
+  ],
+  "author": "mahua",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mahua17/mgImap/issues"
+  },
+  "homepage": "https://github.com/mahua17/mgImap#readme",
+  "dependencies": {
+    "socks": "^2.6.2",
+    "utf7": "^1.0.2"
+  }
+}
