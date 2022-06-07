@@ -1,0 +1,2 @@
+# mgImap
+node imap proxy
