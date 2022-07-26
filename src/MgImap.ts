@@ -7,7 +7,7 @@ import { simpleParser } from "mailparser";
 
 const utf7 = require("utf7").imap;
 
-interface MgImapOptions {
+export interface MgImapOptions {
   user: string;
   password: string;
   host: string;
@@ -30,21 +30,21 @@ interface MgImapOptions {
   logger?: (...args: any[]) => any;
 }
 
-interface TagResponse {
+export interface TagResponse {
   result: "ok" | "no" | "bad";
   tag: number;
   text: string;
   textCode?: string;
 }
 
-interface UntaggedResponse {
+export interface UntaggedResponse {
   type: string;
   num?: number;
   textCode?: string;
   text?: any;
 }
 
-interface OpenBoxResponse {
+export interface OpenBoxResponse {
   name: string;
   flags: any[];
   readOnly: boolean;
