@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.MgImap = void 0;
 const events_1 = require("events");
 const net_1 = require("net");
 const tls = require("tls");
@@ -332,7 +333,7 @@ class MgImap extends events_1.EventEmitter {
             }
         });
         this.parser.on("untagged", async (res) => {
-            console.log("untagged: ", res);
+            // console.log("untagged: ", res);
             const { type, text, num } = res;
             if (type === "ok" && !this.currCmd) {
                 // 连接成功服务器返回欢迎信息
@@ -450,5 +451,5 @@ class MgImap extends events_1.EventEmitter {
         });
     }
 }
-exports.default = MgImap;
+exports.MgImap = MgImap;
 //# sourceMappingURL=MgImap.js.map

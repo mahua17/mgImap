@@ -1,7 +1,11 @@
 /// <reference types="node" />
 /// <reference types="node" />
+/// <reference types="node" />
+/// <reference types="node" />
 import { EventEmitter } from "events";
+import { Socket } from "net";
 import * as tls from "tls";
+import { ParsedMail } from "mailparser";
 interface MgImapOptions {
     user: string;
     password: string;
@@ -30,6 +34,12 @@ interface TagResponse {
     text: string;
     textCode?: string;
 }
+interface UntaggedResponse {
+    type: string;
+    num?: number;
+    textCode?: string;
+    text?: any;
+}
 interface OpenBoxResponse {
     name: string;
     flags: any[];
@@ -46,7 +56,51 @@ interface OpenBoxResponse {
         new: number;
     };
 }
-export default class MgImap extends EventEmitter {
+declare interface MgImap {
+    on(event: string, listener: (...args: unknown[]) => void): this;
+    on(event: 'proxyError', listener: (err: Error) => void): this;
+    on(event: 'socketError', listener: (err: Error) => void): this;
+    on(event: 'connect', listener: (socket: Socket) => void): this;
+    on(event: 'cmdError', listener: (err: Error) => void): this;
+    on(event: 'login', listener: (isLogin: boolean, err?: string) => void): this;
+    on(event: 'bye', listener: (res: UntaggedResponse) => void): this;
+    on(event: 'ready', listener: () => void): this;
+    on(event: 'exists', listener: (res: {
+        total: number;
+        new: number;
+    }) => void): this;
+    on(event: 'expunge', listener: (res: number) => void): this;
+    on(event: 'close', listener: (had_err: boolean) => void): this;
+    on(event: 'end', listener: () => void): this;
+    on(event: 'timeout', listener: () => void): this;
+    on(event: 'message', listener: (msg: Buffer) => void): this;
+    on(event: 'mail', listener: (err: any, data: {
+        uid: string;
+        mail: ParsedMail;
+    }) => void): this;
+    emit(event: string | symbol, ...args: unknown[]): boolean;
+    emit(event: 'proxyError', err: Error): boolean;
+    emit(event: 'socketError', info: Error): boolean;
+    emit(event: 'connect', socket: Socket): boolean;
+    emit(event: 'cmdError', err: Error): boolean;
+    emit(event: 'login', isLogin: boolean, err?: string): boolean;
+    emit(event: 'bye', res: UntaggedResponse): boolean;
+    emit(event: 'ready'): boolean;
+    emit(event: 'exists', res: {
+        total: number;
+        new: number;
+    }): boolean;
+    emit(event: 'expunge', res: number): boolean;
+    emit(event: 'close', had_err: boolean): boolean;
+    emit(event: 'end'): boolean;
+    emit(event: 'timeout'): boolean;
+    emit(event: 'message', msg: Buffer): boolean;
+    emit(event: 'mail', err: any, data: {
+        uid: number;
+        mail: ParsedMail;
+    }): boolean;
+}
+declare class MgImap extends EventEmitter implements MgImap {
     private options;
     private socket?;
     socketTimeout: number;
@@ -96,17 +150,17 @@ export default class MgImap extends EventEmitter {
      * 与邮箱服务器保持连接，但服务器也有可能主动关闭
      * @returns
      */
-    noop(): Promise<unknown>;
+    noop(): Promise<boolean>;
     /**
      * 退出
      * @returns
      */
-    logout(): Promise<unknown>;
+    logout(): Promise<boolean>;
     /**
      * 开始监听IDLE
      * @returns
      */
-    idel(): Promise<unknown>;
+    idel(): Promise<boolean>;
     /**
      * 邮箱是否支持IDEL，IDEL可以实时获取邮箱状态
      * @returns
@@ -120,4 +174,4 @@ export default class MgImap extends EventEmitter {
     private initParser;
     private setSocketEvent;
 }
-export {};
+export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse };

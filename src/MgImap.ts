@@ -3,11 +3,11 @@ import { Socket } from "net";
 import * as tls from "tls";
 import { SocksClient } from "socks";
 import Parser from "./Parser";
-import { simpleParser } from "mailparser";
+import { ParsedMail, simpleParser } from "mailparser";
 
 const utf7 = require("utf7").imap;
 
-export interface MgImapOptions {
+interface MgImapOptions {
   user: string;
   password: string;
   host: string;
@@ -30,21 +30,21 @@ export interface MgImapOptions {
   logger?: (...args: any[]) => any;
 }
 
-export interface TagResponse {
+interface TagResponse {
   result: "ok" | "no" | "bad";
   tag: number;
   text: string;
   textCode?: string;
 }
 
-export interface UntaggedResponse {
+interface UntaggedResponse {
   type: string;
   num?: number;
   textCode?: string;
   text?: any;
 }
 
-export interface OpenBoxResponse {
+interface OpenBoxResponse {
   name: string;
   flags: any[];
   readOnly: boolean;
@@ -61,7 +61,41 @@ export interface OpenBoxResponse {
   };
 }
 
-export default class MgImap extends EventEmitter {
+declare interface MgImap {
+  on(event:string, listener: (...args: unknown[])=>void): this;
+  on(event: 'proxyError', listener: (err: Error) => void): this;
+  on(event: 'socketError', listener: (err: Error) => void): this;
+  on(event: 'connect', listener: (socket:Socket) => void): this;
+  on(event: 'cmdError', listener: (err: Error) => void): this;
+  on(event: 'login', listener: (isLogin: boolean, err?:string) => void): this;
+  on(event: 'bye', listener: (res: UntaggedResponse) => void): this;
+  on(event: 'ready', listener: () => void): this;
+  on(event: 'exists', listener: (res:{total:number, new:number}) => void): this;
+  on(event: 'expunge', listener: (res:number) => void): this;
+  on(event: 'close', listener: (had_err:boolean) => void): this;
+  on(event: 'end', listener: () => void): this;
+  on(event: 'timeout', listener: () => void): this;
+  on(event: 'message', listener: (msg:Buffer) => void): this;
+  on(event: 'mail',listener: (err:any, data:{uid:string, mail:ParsedMail}) => void): this;
+
+  emit(event: string | symbol, ...args: unknown[]): boolean;
+  emit(event: 'proxyError', err: Error): boolean;
+  emit(event: 'socketError', info: Error): boolean;
+  emit(event: 'connect', socket:Socket): boolean;
+  emit(event: 'cmdError', err: Error): boolean;
+  emit(event: 'login', isLogin: boolean, err?:string): boolean;
+  emit(event: 'bye', res: UntaggedResponse): boolean;
+  emit(event: 'ready'): boolean;
+  emit(event: 'exists', res:{total:number, new:number}): boolean;
+  emit(event: 'expunge', res:number): boolean;
+  emit(event: 'close',had_err:boolean): boolean;
+  emit(event: 'end'): boolean;
+  emit(event: 'timeout'): boolean;
+  emit(event: 'message', msg:Buffer): boolean;
+  emit(event: 'mail', err:any, data:{uid:number, mail:ParsedMail}): boolean;
+}
+
+class MgImap extends EventEmitter implements MgImap {
   private options: MgImapOptions;
 
   private socket?: Socket;
@@ -296,7 +330,7 @@ export default class MgImap extends EventEmitter {
    * @returns 
    */
   async noop(){
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       this.sendCmd("NOOP", (res)=>{
         resolve(res.result === "ok");
       })
@@ -308,7 +342,7 @@ export default class MgImap extends EventEmitter {
    * @returns 
    */
   async logout(){
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       this.sendCmd("LOGOUT", (res)=>{
         if(this.logined && res.result === 'ok'){
           this.logined = false;
@@ -323,7 +357,7 @@ export default class MgImap extends EventEmitter {
    * @returns 
    */
   async idel(){
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       this.sendCmd("IDLE", (res)=>{
         resolve(res.result === "ok");
       })
@@ -566,3 +600,6 @@ export default class MgImap extends EventEmitter {
     });
   }
 }
+
+
+export {MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse}
