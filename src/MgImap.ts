@@ -439,7 +439,7 @@ export default class MgImap extends EventEmitter {
     });
 
     this.parser.on("untagged", async (res: UntaggedResponse) => {
-      console.log("untagged: ", res);
+      // console.log("untagged: ", res);
       const { type, text, num } = res;
       if (type === "ok" && !this.currCmd) {
         // 连接成功服务器返回欢迎信息
