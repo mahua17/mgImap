@@ -550,7 +550,8 @@ class MgImap extends EventEmitter implements MgImap {
         this.emit("exists", this.box.messages);
 
         if (this.idling) {
-          this.socket?.write("DONE\r\n")
+          this.socket?.write("DONE\r\n");
+          this.idling = false;
         }
 
       } else if (type === 'capability') {
