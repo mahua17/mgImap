@@ -49,7 +49,6 @@ class Parser extends events_1.EventEmitter {
             }
         }
         else {
-            const dataStr = this.data.toString("utf-8");
             const endIndex = indexOfCh(this.data);
             if (endIndex !== -1) {
                 const res = this.data.subarray(0, endIndex).toString("utf-8");

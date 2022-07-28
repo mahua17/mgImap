@@ -402,6 +402,7 @@ class MgImap extends events_1.EventEmitter {
                 this.emit("exists", this.box.messages);
                 if (this.idling) {
                     this.socket?.write("DONE\r\n");
+                    this.idling = false;
                 }
             }
             else if (type === 'capability') {
