@@ -4,8 +4,8 @@ import * as tls from "tls";
 import { SocksClient } from "socks";
 import Parser from "./Parser";
 import { ParsedMail, simpleParser } from "mailparser";
-import { Duplex, Readable } from "stream";
 
+const buildSearchQuery = require("./funs").buildSearchQuery;
 const utf7 = require("utf7").imap;
 
 interface MgImapOptions {
@@ -63,38 +63,38 @@ interface OpenBoxResponse {
 }
 
 declare interface MgImap {
-  on(event:string, listener: (...args: unknown[])=>void): this;
+  on(event: string, listener: (...args: unknown[]) => void): this;
   on(event: 'proxyError', listener: (err: Error) => void): this;
   on(event: 'socketError', listener: (err: Error) => void): this;
-  on(event: 'connect', listener: (socket:Socket) => void): this;
+  on(event: 'connect', listener: (socket: Socket) => void): this;
   on(event: 'cmdError', listener: (err: Error) => void): this;
-  on(event: 'login', listener: (isLogin: boolean, err?:string) => void): this;
+  on(event: 'login', listener: (isLogin: boolean, err?: string) => void): this;
   on(event: 'bye', listener: (res: UntaggedResponse) => void): this;
   on(event: 'ready', listener: () => void): this;
-  on(event: 'exists', listener: (res:{total:number, new:number}) => void): this;
-  on(event: 'expunge', listener: (res:number) => void): this;
-  on(event: 'close', listener: (had_err:boolean) => void): this;
+  on(event: 'exists', listener: (res: { total: number, new: number }) => void): this;
+  on(event: 'expunge', listener: (res: number) => void): this;
+  on(event: 'close', listener: (had_err: boolean) => void): this;
   on(event: 'end', listener: () => void): this;
   on(event: 'timeout', listener: () => void): this;
-  on(event: 'message', listener: (msg:Buffer) => void): this;
-  on(event: 'mail',listener: (err:any, data:{uid:number, mail:ParsedMail}) => void): this;
+  on(event: 'message', listener: (msg: Buffer) => void): this;
+  on(event: 'mail', listener: (err: any, data: { uid: number, mail: ParsedMail }) => void): this;
   on(event: 'destroy'): this;
 
   emit(event: string | symbol, ...args: unknown[]): boolean;
   emit(event: 'proxyError', err: Error): boolean;
   emit(event: 'socketError', info: Error): boolean;
-  emit(event: 'connect', socket:Socket): boolean;
+  emit(event: 'connect', socket: Socket): boolean;
   emit(event: 'cmdError', err: Error): boolean;
-  emit(event: 'login', isLogin: boolean, err?:string): boolean;
+  emit(event: 'login', isLogin: boolean, err?: string): boolean;
   emit(event: 'bye', res: UntaggedResponse): boolean;
   emit(event: 'ready'): boolean;
-  emit(event: 'exists', res:{total:number, new:number}): boolean;
-  emit(event: 'expunge', res:number): boolean;
-  emit(event: 'close',had_err:boolean): boolean;
+  emit(event: 'exists', res: { total: number, new: number }): boolean;
+  emit(event: 'expunge', res: number): boolean;
+  emit(event: 'close', had_err: boolean): boolean;
   emit(event: 'end'): boolean;
   emit(event: 'timeout'): boolean;
-  emit(event: 'message', msg:Buffer): boolean;
-  emit(event: 'mail', err:any, data:{uid:number, mail:ParsedMail}): boolean;
+  emit(event: 'message', msg: Buffer): boolean;
+  emit(event: 'mail', err: any, data: { uid: number, mail: ParsedMail }): boolean;
   emit(event: 'destroy'): boolean;
 }
 
@@ -121,9 +121,9 @@ class MgImap extends EventEmitter implements MgImap {
 
   private caps: string[] = [];
 
-  private idling:boolean = false;
+  private idling: boolean = false;
 
-  private logined:boolean = false;
+  private logined: boolean = false;
 
   private box: OpenBoxResponse = {
     name: "",
@@ -226,7 +226,7 @@ class MgImap extends EventEmitter implements MgImap {
   async login() {
     const { user, password } = this.options;
     return new Promise<boolean>((resolve) => {
-      if(this.logined){
+      if (this.logined) {
         resolve(true);
         return;
       }
@@ -309,10 +309,37 @@ class MgImap extends EventEmitter implements MgImap {
   }
 
   /**
+   * 条件查询
+   */
+  async search(criteria:any) {
+    var cmd = 'UID SEARCH',
+      info = { hasUTF8: false /*output*/ },
+      query = buildSearchQuery(criteria, this.caps, info);
+      // lines;
+    // if (info.hasUTF8) {
+    //   cmd += ' CHARSET UTF-8';
+    //   lines = query.split("\r\n");
+
+    //   query = lines.shift();
+    // }
+    cmd += query;
+
+    return new Promise<number[]>((resolve, reject) => {
+      this.sendCmd(cmd, (res) => {
+        if (res.result === "ok") {
+          resolve(this.searchUids);
+        } else {
+          reject(res.text);
+        }
+      });
+    });
+  }
+
+  /**
    * 读取uid的邮件内容
    * @param range
    */
-   async fetchUid(range: number[]) {
+  async fetchUid(range: number[]) {
     return new Promise<any>((resolve, reject) => {
       this.sendCmd(
         `UID FETCH ${range.join(",")} (UID FLAGS INTERNALDATE BODYSTRUCTURE BODY[])`,
@@ -322,9 +349,9 @@ class MgImap extends EventEmitter implements MgImap {
             // process.nextTick(()=>{
             //   resolve(true)
             // })
-            setTimeout(()=>{
+            setTimeout(() => {
               resolve(true)
-            }, 100)
+            }, 1000)
           } else {
             reject(res.text);
           }
@@ -337,9 +364,9 @@ class MgImap extends EventEmitter implements MgImap {
    * 与邮箱服务器保持连接，但服务器也有可能主动关闭
    * @returns 
    */
-  async noop(){
+  async noop() {
     return new Promise<boolean>((resolve, reject) => {
-      this.sendCmd("NOOP", (res)=>{
+      this.sendCmd("NOOP", (res) => {
         resolve(res.result === "ok");
       })
     })
@@ -349,10 +376,10 @@ class MgImap extends EventEmitter implements MgImap {
    * 退出
    * @returns 
    */
-  async logout(){
+  async logout() {
     return new Promise<boolean>((resolve, reject) => {
-      this.sendCmd("LOGOUT", (res)=>{
-        if(this.logined && res.result === 'ok'){
+      this.sendCmd("LOGOUT", (res) => {
+        if (this.logined && res.result === 'ok') {
           this.logined = false;
         }
         resolve(res.result === "ok");
@@ -364,9 +391,9 @@ class MgImap extends EventEmitter implements MgImap {
    * 开始监听IDLE
    * @returns 
    */
-  async idel(){
+  async idel() {
     return new Promise<boolean>((resolve, reject) => {
-      this.sendCmd("IDLE", (res)=>{
+      this.sendCmd("IDLE", (res) => {
         resolve(res.result === "ok");
       })
     })
@@ -376,11 +403,11 @@ class MgImap extends EventEmitter implements MgImap {
    * 邮箱是否支持IDEL，IDEL可以实时获取邮箱状态
    * @returns 
    */
-  hasIdel(){
+  hasIdel() {
     return this.caps.includes("IDLE");
   }
 
-  isLogin(){
+  isLogin() {
     return this.logined;
   }
 
@@ -522,7 +549,7 @@ class MgImap extends EventEmitter implements MgImap {
         }
         this.emit("exists", this.box.messages);
 
-        if(this.idling){
+        if (this.idling) {
           this.socket?.write("DONE\r\n")
         }
 
@@ -559,8 +586,8 @@ class MgImap extends EventEmitter implements MgImap {
       // this.emit("mail", null, {uid: Number(data.uid)})
     })
 
-    this.parser.on("continue", (res:{textCode?:string, text:string})=>{
-      if(res.text === "idling"){
+    this.parser.on("continue", (res: { textCode?: string, text: string }) => {
+      if (res.text === "idling") {
         this.idling = true;
       }
     })
@@ -612,29 +639,12 @@ class MgImap extends EventEmitter implements MgImap {
       this.emit("timeout");
     });
 
-    let ignoreReadable = false;
-    // this.socket.on("readable", ()=>{
-    //   // if(ignoreReadable)
-    //   //   return;
-
-    //     // ignoreReadable = true;
-    //     const data = this.socket?.read(100)
-    //     data && this.parser?.parse(data);
-    //     ignoreReadable = false;
-
-    // })
-
-    this.socket.on("data", (data:Buffer) => {
-      // this.socket?.pause();
-      // const data = this.socket?.read()
+    this.socket.on("data", (data: Buffer) => {
+      logger && logger(`<=`, data.toString("utf-8"));
       this.parser?.parse(data);
-      // process.nextTick(()=>{
-      //   this.socket?.resume()
-      // })
-      // this.emit("message", data);
     });
   }
 }
 
 
-export {MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse}
+export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse }

@@ -7,6 +7,7 @@ const tls = require("tls");
 const socks_1 = require("socks");
 const Parser_1 = require("./Parser");
 const mailparser_1 = require("mailparser");
+const buildSearchQuery = require("./funs").buildSearchQuery;
 const utf7 = require("utf7").imap;
 class MgImap extends events_1.EventEmitter {
     constructor(opts) {
@@ -190,6 +191,29 @@ class MgImap extends events_1.EventEmitter {
         });
     }
     /**
+     * 条件查询
+     */
+    async search(criteria) {
+        var cmd = 'UID SEARCH', info = { hasUTF8: false /*output*/ }, query = buildSearchQuery(criteria, this.caps, info);
+        // lines;
+        // if (info.hasUTF8) {
+        //   cmd += ' CHARSET UTF-8';
+        //   lines = query.split("\r\n");
+        //   query = lines.shift();
+        // }
+        cmd += query;
+        return new Promise((resolve, reject) => {
+            this.sendCmd(cmd, (res) => {
+                if (res.result === "ok") {
+                    resolve(this.searchUids);
+                }
+                else {
+                    reject(res.text);
+                }
+            });
+        });
+    }
+    /**
      * 读取uid的邮件内容
      * @param range
      */
@@ -203,7 +227,7 @@ class MgImap extends events_1.EventEmitter {
                     // })
                     setTimeout(() => {
                         resolve(true);
-                    }, 100);
+                    }, 1000);
                 }
                 else {
                     reject(res.text);
@@ -457,23 +481,9 @@ class MgImap extends events_1.EventEmitter {
             this.destroy();
             this.emit("timeout");
         });
-        let ignoreReadable = false;
-        // this.socket.on("readable", ()=>{
-        //   // if(ignoreReadable)
-        //   //   return;
-        //     // ignoreReadable = true;
-        //     const data = this.socket?.read(100)
-        //     data && this.parser?.parse(data);
-        //     ignoreReadable = false;
-        // })
         this.socket.on("data", (data) => {
-            // this.socket?.pause();
-            // const data = this.socket?.read()
+            logger && logger(`<=`, data.toString("utf-8"));
             this.parser?.parse(data);
-            // process.nextTick(()=>{
-            //   this.socket?.resume()
-            // })
-            // this.emit("message", data);
         });
     }
 }

@@ -144,6 +144,10 @@ declare class MgImap extends EventEmitter implements MgImap {
      */
     searchUid(range: string): Promise<number[]>;
     /**
+     * 条件查询
+     */
+    search(criteria: any): Promise<number[]>;
+    /**
      * 读取uid的邮件内容
      * @param range
      */
