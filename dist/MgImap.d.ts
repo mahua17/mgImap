@@ -181,4 +181,4 @@ declare class MgImap extends EventEmitter implements MgImap {
     private initParser;
     private setSocketEvent;
 }
-export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse };
+export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse, ParsedMail };
