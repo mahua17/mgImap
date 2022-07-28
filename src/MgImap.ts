@@ -4,6 +4,7 @@ import * as tls from "tls";
 import { SocksClient } from "socks";
 import Parser from "./Parser";
 import { ParsedMail, simpleParser } from "mailparser";
+import { Duplex, Readable } from "stream";
 
 const utf7 = require("utf7").imap;
 
@@ -76,7 +77,8 @@ declare interface MgImap {
   on(event: 'end', listener: () => void): this;
   on(event: 'timeout', listener: () => void): this;
   on(event: 'message', listener: (msg:Buffer) => void): this;
-  on(event: 'mail',listener: (err:any, data:{uid:string, mail:ParsedMail}) => void): this;
+  on(event: 'mail',listener: (err:any, data:{uid:number, mail:ParsedMail}) => void): this;
+  on(event: 'destroy'): this;
 
   emit(event: string | symbol, ...args: unknown[]): boolean;
   emit(event: 'proxyError', err: Error): boolean;
@@ -93,6 +95,7 @@ declare interface MgImap {
   emit(event: 'timeout'): boolean;
   emit(event: 'message', msg:Buffer): boolean;
   emit(event: 'mail', err:any, data:{uid:number, mail:ParsedMail}): boolean;
+  emit(event: 'destroy'): boolean;
 }
 
 class MgImap extends EventEmitter implements MgImap {
@@ -221,12 +224,12 @@ class MgImap extends EventEmitter implements MgImap {
    * @returns
    */
   async login() {
-    if (this.logined) {
-      this.emit("login", true);
-      return;
-    }
     const { user, password } = this.options;
     return new Promise<boolean>((resolve) => {
+      if(this.logined){
+        resolve(true);
+        return;
+      }
       this.sendCmd(`LOGIN "${user}" "${password}"`, (res) => {
         if (res.result === "ok") {
           this.logined = true;
@@ -295,7 +298,7 @@ class MgImap extends EventEmitter implements MgImap {
    */
   async searchUid(range: string) {
     return new Promise<number[]>((resolve, reject) => {
-      this.sendCmd(`UID SEARCH ${range}`, (res) => {
+      this.sendCmd(`UID SEARCH UID ${range}`, (res) => {
         if (res.result === "ok") {
           resolve(this.searchUids);
         } else {
@@ -316,7 +319,12 @@ class MgImap extends EventEmitter implements MgImap {
         (res) => {
           if (res.result === "ok") {
             // 读取完成
-            resolve(true)
+            // process.nextTick(()=>{
+            //   resolve(true)
+            // })
+            setTimeout(()=>{
+              resolve(true)
+            }, 100)
           } else {
             reject(res.text);
           }
@@ -370,6 +378,10 @@ class MgImap extends EventEmitter implements MgImap {
    */
   hasIdel(){
     return this.caps.includes("IDLE");
+  }
+
+  isLogin(){
+    return this.logined;
   }
 
   private async startTTLS() {
@@ -445,7 +457,10 @@ class MgImap extends EventEmitter implements MgImap {
     this.parser = undefined;
     this.state = "disconnected";
     this.socket?.removeAllListeners();
+    this.socket?.end()
+    this.socket?.destroy()
     this.socket = undefined;
+    this.emit("destroy")
   }
 
   private handleConnect(sock: Socket) {
@@ -455,6 +470,7 @@ class MgImap extends EventEmitter implements MgImap {
 
   private initParser() {
     if (this.parser) return;
+
     const { logger, proxy } = this.options
     this.parser = new Parser(logger);
 
@@ -535,10 +551,12 @@ class MgImap extends EventEmitter implements MgImap {
 
     });
 
-    this.parser.on("body", (data: { uid: number, contents: string }) => {
+    this.parser.on("body", (data: { uid: number, contents: string | Buffer }) => {
       simpleParser(data.contents, { skipImageLinks: true, skipTextToHtml: true }, (err, mail) => {
-        this.emit("mail", err, { uid: data.uid, mail })
+        this.emit("mail", err, { uid: Number(data.uid), mail })
       })
+
+      // this.emit("mail", null, {uid: Number(data.uid)})
     })
 
     this.parser.on("continue", (res:{textCode?:string, text:string})=>{
@@ -594,9 +612,26 @@ class MgImap extends EventEmitter implements MgImap {
       this.emit("timeout");
     });
 
-    this.socket.on("data", (data: Buffer) => {
+    let ignoreReadable = false;
+    // this.socket.on("readable", ()=>{
+    //   // if(ignoreReadable)
+    //   //   return;
+
+    //     // ignoreReadable = true;
+    //     const data = this.socket?.read(100)
+    //     data && this.parser?.parse(data);
+    //     ignoreReadable = false;
+
+    // })
+
+    this.socket.on("data", (data:Buffer) => {
+      // this.socket?.pause();
+      // const data = this.socket?.read()
       this.parser?.parse(data);
-      this.emit("message", data);
+      // process.nextTick(()=>{
+      //   this.socket?.resume()
+      // })
+      // this.emit("message", data);
     });
   }
 }

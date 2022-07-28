@@ -1,51 +1,74 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
-const CRLF = "\r\n", RE_TAGGED = /^A(\d+) (OK|NO|BAD) ?(?:\[([^\]]+)\] )?(.*)$/i, RE_BODYPART = /^BODY\[/, RE_SEQNO = /^\* (\d+)/, EMPTY_READCB = function (n) { }, LITPLACEHOLDER = String.fromCharCode(0), RE_BODYLITERAL = /BODY\[(.*)\] \{(\d+)\}$/i, RE_LITERAL = /\{(\d+)\}$/, RE_PRECEDING = /^(?:\* |A\d+ |\+ ?)/, RE_SEARCH_MODSEQ = /^(.+) \(MODSEQ (.+?)\)$/i, RE_LISTCONTENT = /^\((.*)\)$/, RE_FETCHBODY = /^\* (\d+) FETCH (.+) BODY\[\] \{\d+\}/i, RE_FETCHBODY_UID = /UID (\d+)/i, RE_CONTINUE = /^\+(?: (?:\[([^\]]+)\] )?(.+))?$/i, RE_UNTAGGED = /^\* (?:(OK|NO|BAD|BYE|FLAGS|ID|LIST|XLIST|LSUB|SEARCH|STATUS|CAPABILITY|NAMESPACE|PREAUTH|SORT|THREAD|ESEARCH|QUOTA|QUOTAROOT)|(\d+) (EXPUNGE|FETCH|RECENT|EXISTS))(?:(?: \[([^\]]+)\])?(?: (.+))?)?$/i;
+const CRLF = "\r\n", CH_LF = 10, CH_CR = 13, RE_TAGGED = /^A(\d+) (OK|NO|BAD) ?(?:\[([^\]]+)\] )?(.*)$/i, RE_BODYPART = /^BODY\[/, RE_SEQNO = /^\* (\d+)/, EMPTY_READCB = function (n) { }, LITPLACEHOLDER = String.fromCharCode(0), RE_BODYLITERAL = /BODY\[(.*)\] \{(\d+)\}$/i, 
+// RE_BODYLITERAL = /^\* \d+ FETCH \(UID \d+ INTERNALDATE .+ \{(\d+)\}$/i,
+RE_LITERAL = /\{(\d+)\}$/, RE_PRECEDING = /^(?:\* |A\d+ |\+ ?)/, RE_SEARCH_MODSEQ = /^(.+) \(MODSEQ (.+?)\)$/i, RE_LISTCONTENT = /^\((.*)\)$/, RE_FETCHBODY = /^\* (\d+) FETCH (.+) BODY\[\] \{\d+\}/i, RE_FETCHBODY_UID = /UID (\d+)/i, RE_CONTINUE = /^\+(?: (?:\[([^\]]+)\] )?(.+))?$/i, RE_UNTAGGED = /^\* (?:(OK|NO|BAD|BYE|FLAGS|ID|LIST|XLIST|LSUB|SEARCH|STATUS|CAPABILITY|NAMESPACE|PREAUTH|SORT|THREAD|ESEARCH|QUOTA|QUOTAROOT)|(\d+) (EXPUNGE|FETCH|RECENT|EXISTS))(?:(?: \[([^\]]+)\])?(?: (.+))?)?$/i;
+function indexOfCh(buffer) {
+    let r = -1;
+    for (let i = 0; i < buffer.length; ++i) {
+        if (buffer[i] === CH_CR && buffer[i + 1] === CH_LF) {
+            r = i;
+            break;
+        }
+    }
+    return r;
+}
 class Parser extends events_1.EventEmitter {
     constructor(logger) {
         super();
-        this.message = "";
         this.logger = logger;
     }
     parse(data) {
-        const msg = data.toString("utf8");
-        this.logger && this.logger("<=", msg);
-        this.message += msg;
+        if (this.data) {
+            this.data = Buffer.concat([this.data, data]);
+        }
+        else {
+            this.data = Buffer.from(data);
+        }
         this.handleMessage();
     }
     handleMessage() {
-        if (!this.message)
+        if (!this.data || this.data.length === 0)
             return;
         if (this.body) {
-            const res = this.message.substring(0, this.body.size);
+            const res = this.data.subarray(0, this.body.size);
             this.body.size -= res.length;
-            if (res !== "")
-                this.message = this.message.substring(res.length);
-            this.body.contents += res;
+            if (res.length) {
+                this.data = this.data.subarray(res.length);
+            }
+            if (this.body.contents) {
+                this.body.contents = Buffer.concat([this.body.contents, res]);
+            }
+            else {
+                this.body.contents = Buffer.from(res);
+            }
             if (this.body.size <= 0) {
-                // fs.writeFileSync("./body.txt", this.body.contents);
                 this.emit("body", this.body);
                 this.body = undefined;
             }
         }
         else {
-            const endIndex = this.message.indexOf(CRLF);
-            if (endIndex === -1)
-                return;
-            const res = this.message.substring(0, endIndex);
-            this.message = this.message.substring(endIndex + 2);
-            if (RE_PRECEDING.test(res)) {
-                const firstChar = res[0];
-                if (firstChar === "*")
-                    this.resUntagged(res);
-                else if (firstChar === "A")
-                    this.resTagged(res);
-                else if (firstChar === "+")
-                    this.resContinue(res);
+            const dataStr = this.data.toString("utf-8");
+            const endIndex = indexOfCh(this.data);
+            if (endIndex !== -1) {
+                const res = this.data.subarray(0, endIndex).toString("utf-8");
+                this.data = this.data.subarray(endIndex + 2);
+                if (RE_PRECEDING.test(res)) {
+                    const firstChar = res[0];
+                    if (firstChar === "*")
+                        this.resUntagged(res);
+                    else if (firstChar === "A")
+                        this.resTagged(res);
+                    else if (firstChar === "+")
+                        this.resContinue(res);
+                }
+                else {
+                    this.emit("other", res);
+                }
             }
             else {
-                this.emit("other", res);
+                return;
             }
         }
         process.nextTick(this.handleMessage.bind(this));
@@ -63,7 +86,16 @@ class Parser extends events_1.EventEmitter {
             this.body = {
                 uid,
                 size,
-                contents: ""
+            };
+        }
+        else if (m = RE_LITERAL.exec(msg)) {
+            // non-BODY literal -- buffer it
+            const uidMatch = RE_FETCHBODY_UID.exec(msg);
+            const uid = uidMatch ? parseInt(uidMatch[1], 10) : undefined;
+            msg = msg.replace(RE_LITERAL, LITPLACEHOLDER);
+            this.body = {
+                uid,
+                size: parseInt(m[1], 10)
             };
         }
         else if ((m = RE_UNTAGGED.exec(msg))) {
@@ -156,7 +188,7 @@ class Parser extends events_1.EventEmitter {
         var m;
         if ((m = RE_LITERAL.exec(msg))) {
             // non-BODY literal -- buffer it
-            this.message = this.message.replace(RE_LITERAL, LITPLACEHOLDER);
+            // this.message = this.message.replace(RE_LITERAL, LITPLACEHOLDER);
         }
         else if ((m = RE_TAGGED.exec(msg))) {
             this.emit("tagged", {
@@ -168,7 +200,6 @@ class Parser extends events_1.EventEmitter {
             });
         }
         else {
-            // this.buffer = "";
         }
     }
     resContinue(msg) {

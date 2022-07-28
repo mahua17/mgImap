@@ -75,9 +75,10 @@ declare interface MgImap {
     on(event: 'timeout', listener: () => void): this;
     on(event: 'message', listener: (msg: Buffer) => void): this;
     on(event: 'mail', listener: (err: any, data: {
-        uid: string;
+        uid: number;
         mail: ParsedMail;
     }) => void): this;
+    on(event: 'destroy'): this;
     emit(event: string | symbol, ...args: unknown[]): boolean;
     emit(event: 'proxyError', err: Error): boolean;
     emit(event: 'socketError', info: Error): boolean;
@@ -99,6 +100,7 @@ declare interface MgImap {
         uid: number;
         mail: ParsedMail;
     }): boolean;
+    emit(event: 'destroy'): boolean;
 }
 declare class MgImap extends EventEmitter implements MgImap {
     private options;
@@ -127,7 +129,7 @@ declare class MgImap extends EventEmitter implements MgImap {
      * 登录
      * @returns
      */
-    login(): Promise<boolean | undefined>;
+    login(): Promise<boolean>;
     ID(identification: any): Promise<unknown>;
     /**
      * 选择邮箱文件夹
@@ -166,6 +168,7 @@ declare class MgImap extends EventEmitter implements MgImap {
      * @returns
      */
     hasIdel(): boolean;
+    isLogin(): boolean;
     private startTTLS;
     private capability;
     private createTLS;

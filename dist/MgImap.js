@@ -110,12 +110,12 @@ class MgImap extends events_1.EventEmitter {
      * @returns
      */
     async login() {
-        if (this.logined) {
-            this.emit("login", true);
-            return;
-        }
         const { user, password } = this.options;
         return new Promise((resolve) => {
+            if (this.logined) {
+                resolve(true);
+                return;
+            }
             this.sendCmd(`LOGIN "${user}" "${password}"`, (res) => {
                 if (res.result === "ok") {
                     this.logined = true;
@@ -179,7 +179,7 @@ class MgImap extends events_1.EventEmitter {
      */
     async searchUid(range) {
         return new Promise((resolve, reject) => {
-            this.sendCmd(`UID SEARCH ${range}`, (res) => {
+            this.sendCmd(`UID SEARCH UID ${range}`, (res) => {
                 if (res.result === "ok") {
                     resolve(this.searchUids);
                 }
@@ -198,7 +198,12 @@ class MgImap extends events_1.EventEmitter {
             this.sendCmd(`UID FETCH ${range.join(",")} (UID FLAGS INTERNALDATE BODYSTRUCTURE BODY[])`, (res) => {
                 if (res.result === "ok") {
                     // 读取完成
-                    resolve(true);
+                    // process.nextTick(()=>{
+                    //   resolve(true)
+                    // })
+                    setTimeout(() => {
+                        resolve(true);
+                    }, 100);
                 }
                 else {
                     reject(res.text);
@@ -248,6 +253,9 @@ class MgImap extends events_1.EventEmitter {
      */
     hasIdel() {
         return this.caps.includes("IDLE");
+    }
+    isLogin() {
+        return this.logined;
     }
     async startTTLS() {
         return new Promise((resolve, reject) => {
@@ -308,7 +316,10 @@ class MgImap extends events_1.EventEmitter {
         this.parser = undefined;
         this.state = "disconnected";
         this.socket?.removeAllListeners();
+        this.socket?.end();
+        this.socket?.destroy();
         this.socket = undefined;
+        this.emit("destroy");
     }
     handleConnect(sock) {
         this.state = "connected";
@@ -400,8 +411,9 @@ class MgImap extends events_1.EventEmitter {
         });
         this.parser.on("body", (data) => {
             (0, mailparser_1.simpleParser)(data.contents, { skipImageLinks: true, skipTextToHtml: true }, (err, mail) => {
-                this.emit("mail", err, { uid: data.uid, mail });
+                this.emit("mail", err, { uid: Number(data.uid), mail });
             });
+            // this.emit("mail", null, {uid: Number(data.uid)})
         });
         this.parser.on("continue", (res) => {
             if (res.text === "idling") {
@@ -445,9 +457,23 @@ class MgImap extends events_1.EventEmitter {
             this.destroy();
             this.emit("timeout");
         });
+        let ignoreReadable = false;
+        // this.socket.on("readable", ()=>{
+        //   // if(ignoreReadable)
+        //   //   return;
+        //     // ignoreReadable = true;
+        //     const data = this.socket?.read(100)
+        //     data && this.parser?.parse(data);
+        //     ignoreReadable = false;
+        // })
         this.socket.on("data", (data) => {
+            // this.socket?.pause();
+            // const data = this.socket?.read()
             this.parser?.parse(data);
-            this.emit("message", data);
+            // process.nextTick(()=>{
+            //   this.socket?.resume()
+            // })
+            // this.emit("message", data);
         });
     }
 }

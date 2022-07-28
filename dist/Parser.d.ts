@@ -3,7 +3,7 @@
 import { EventEmitter } from "events";
 export default class Parser extends EventEmitter {
     private logger?;
-    private message;
+    private data?;
     private body?;
     constructor(logger?: (...args: any[]) => any);
     parse(data: Buffer): void;
