@@ -78,7 +78,7 @@ declare interface MgImap {
         uid: number;
         mail: ParsedMail;
     }) => void): this;
-    on(event: 'destroy'): this;
+    on(event: 'destroy', listener: () => void): this;
     emit(event: string | symbol, ...args: unknown[]): boolean;
     emit(event: 'proxyError', err: Error): boolean;
     emit(event: 'socketError', info: Error): boolean;

@@ -102,9 +102,6 @@ class MgImap extends events_1.EventEmitter {
         else {
             this.cmdQueue.push({ cmd, callback });
         }
-        // if (this.tagNum > 9999) {
-        //   this.tagNum = 0;
-        // }
     }
     /**
      * 登录
@@ -143,8 +140,8 @@ class MgImap extends events_1.EventEmitter {
                     throw new Error('Max allowed key length is 30');
                 if (Buffer.byteLength(identification[k]) > 1024)
                     throw new Error('Max allowed value length is 1024');
-                kv.push('"' + escape(k) + '"');
-                kv.push('"' + escape(identification[k]) + '"');
+                kv.push('"' + encodeURI(k) + '"');
+                kv.push('"' + encodeURI(identification[k]) + '"');
             }
             cmd += ' (' + kv.join(' ') + ')';
         }
@@ -222,12 +219,7 @@ class MgImap extends events_1.EventEmitter {
             this.sendCmd(`UID FETCH ${range.join(",")} (UID FLAGS INTERNALDATE BODYSTRUCTURE BODY[])`, (res) => {
                 if (res.result === "ok") {
                     // 读取完成
-                    // process.nextTick(()=>{
-                    //   resolve(true)
-                    // })
-                    setTimeout(() => {
-                        resolve(true);
-                    }, 1000);
+                    resolve(true);
                 }
                 else {
                     reject(res.text);
@@ -483,7 +475,7 @@ class MgImap extends events_1.EventEmitter {
             this.emit("timeout");
         });
         this.socket.on("data", (data) => {
-            logger && logger(`<=`, data.toString("utf-8"));
+            logger && logger(`<=`, data.toString("utf-8").substring(0, 50));
             this.parser?.parse(data);
         });
     }
