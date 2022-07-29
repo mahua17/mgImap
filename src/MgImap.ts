@@ -78,7 +78,7 @@ declare interface MgImap {
   on(event: 'timeout', listener: () => void): this;
   on(event: 'message', listener: (msg: Buffer) => void): this;
   on(event: 'mail', listener: (err: any, data: { uid: number, mail: ParsedMail }) => void): this;
-  on(event: 'destroy'): this;
+  on(event: 'destroy', listener:()=>void): this;
 
   emit(event: string | symbol, ...args: unknown[]): boolean;
   emit(event: 'proxyError', err: Error): boolean;
@@ -214,9 +214,6 @@ class MgImap extends EventEmitter implements MgImap {
     } else {
       this.cmdQueue.push({ cmd, callback });
     }
-    // if (this.tagNum > 9999) {
-    //   this.tagNum = 0;
-    // }
   }
 
   /**
@@ -256,8 +253,8 @@ class MgImap extends EventEmitter implements MgImap {
           throw new Error('Max allowed key length is 30');
         if (Buffer.byteLength(identification[k]) > 1024)
           throw new Error('Max allowed value length is 1024');
-        kv.push('"' + escape(k) + '"');
-        kv.push('"' + escape(identification[k]) + '"');
+        kv.push('"' + encodeURI(k) + '"');
+        kv.push('"' + encodeURI(identification[k]) + '"');
       }
       cmd += ' (' + kv.join(' ') + ')';
     }
@@ -346,12 +343,7 @@ class MgImap extends EventEmitter implements MgImap {
         (res) => {
           if (res.result === "ok") {
             // 读取完成
-            // process.nextTick(()=>{
-            //   resolve(true)
-            // })
-            setTimeout(() => {
-              resolve(true)
-            }, 1000)
+            resolve(true)
           } else {
             reject(res.text);
           }
@@ -641,7 +633,7 @@ class MgImap extends EventEmitter implements MgImap {
     });
 
     this.socket.on("data", (data: Buffer) => {
-      logger && logger(`<=`, data.toString("utf-8"));
+      logger && logger(`<=`, data.toString("utf-8").substring(0, 50));
       this.parser?.parse(data);
     });
   }
