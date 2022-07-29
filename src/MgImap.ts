@@ -471,12 +471,12 @@ class MgImap extends EventEmitter implements MgImap {
   // }
 
   destroy() {
+    if(this.state === "disconnected") return;
     this.logined = false;
     this.parser?.removeAllListeners();
     this.parser = undefined;
     this.state = "disconnected";
     this.socket?.removeAllListeners();
-    this.socket?.end()
     this.socket?.destroy()
     this.socket = undefined;
     this.emit("destroy")

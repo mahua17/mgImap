@@ -327,6 +327,8 @@ class MgImap extends events_1.EventEmitter {
     //   this.sendCmd(``)
     // }
     destroy() {
+        if (this.state === "disconnected")
+            return;
         this.logined = false;
         this.parser?.removeAllListeners();
         this.parser = undefined;

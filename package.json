@@ -1,6 +1,6 @@
 {
   "name": "mgimap",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "node imap proxy",
   "main": "dist/MgImap.js",
   "files": [
@@ -18,7 +18,7 @@
   "scripts": {
     "test": "ts-node test/test.ts",
     "build": "node scripts/build.js",
-    "release": "npm run build && cd dist && npm publish",
+    "release": "npm run build && npm publish",
     "tsc": "tsc"
   },
   "author": "mahua",
