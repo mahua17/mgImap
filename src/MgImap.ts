@@ -173,8 +173,11 @@ class MgImap extends EventEmitter implements MgImap {
               port: tlsPort,
             },
           });
-          this.createTLS(info.socket)
-          this.handleConnect(info.socket);
+          this.createTLS(info.socket).then(()=>{
+            this.handleConnect(info.socket);
+          }).catch(()=>{
+            this.emit("socketError", new Error("Tls error"))
+          })
         } catch (err: any) {
           logger && logger("proxy error", err);
           this.emit("proxyError", new Error("Proxy connect error " + err.message))

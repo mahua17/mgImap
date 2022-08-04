@@ -62,8 +62,11 @@ class MgImap extends events_1.EventEmitter {
                             port: tlsPort,
                         },
                     });
-                    this.createTLS(info.socket);
-                    this.handleConnect(info.socket);
+                    this.createTLS(info.socket).then(() => {
+                        this.handleConnect(info.socket);
+                    }).catch(() => {
+                        this.emit("socketError", new Error("Tls error"));
+                    });
                 }
                 catch (err) {
                     logger && logger("proxy error", err);
@@ -334,7 +337,6 @@ class MgImap extends events_1.EventEmitter {
         this.parser = undefined;
         this.state = "disconnected";
         this.socket?.removeAllListeners();
-        this.socket?.end();
         this.socket?.destroy();
         this.socket = undefined;
         this.emit("destroy");
