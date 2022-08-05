@@ -302,7 +302,7 @@ class MgImap extends EventEmitter implements MgImap {
         if (res.result === "ok") {
           resolve(this.searchUids);
         } else {
-          reject(res.text);
+          reject(this.currCmd +"\r\n"+ res.text);
         }
       });
     });
@@ -329,7 +329,7 @@ class MgImap extends EventEmitter implements MgImap {
         if (res.result === "ok") {
           resolve(this.searchUids);
         } else {
-          reject(res.text);
+          reject(this.currCmd +"\r\n"+ res.text);
         }
       });
     });
@@ -498,12 +498,12 @@ class MgImap extends EventEmitter implements MgImap {
 
     this.parser.on("tagged", (res: TagResponse) => {
       // console.log(res);
-      this.currCmd = ""
       const handler = this.tagHandlerMap.get(res.tag);
       if (handler) {
         handler(res);
         this.tagHandlerMap.delete(res.tag);
       }
+      this.currCmd = ""
       if (this.cmdQueue.length > 0) {
         const c = this.cmdQueue.shift();
         this.sendCmd(c!.cmd, c!.callback);
@@ -636,7 +636,7 @@ class MgImap extends EventEmitter implements MgImap {
     });
 
     this.socket.on("data", (data: Buffer) => {
-      logger && logger(`<=`, data.toString("utf-8").substring(0, 50));
+      logger && logger(`<=`, data.toString("utf-8"));
       this.parser?.parse(data);
     });
   }
