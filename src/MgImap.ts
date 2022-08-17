@@ -15,6 +15,7 @@ interface MgImapOptions {
   port: number;
   tlsPort: number;
   tls?: boolean;
+  startTLS?:boolean;
   autoLogin?: boolean;
   keepalive?: boolean;
   socketTimeout?: number;
@@ -152,7 +153,7 @@ class MgImap extends EventEmitter implements MgImap {
 
   async connect() {
     if (!this.socket) {
-      const { host, port, logger, tlsPort, proxy } =
+      const { host, port, logger, tlsPort, proxy, tls } =
         this.options;
 
       this.initParser();
@@ -189,10 +190,19 @@ class MgImap extends EventEmitter implements MgImap {
         this.socket.connect(
           {
             host,
-            port,
+            port: tls ? tlsPort : port,
           },
           () => {
-            this.handleConnect(this.socket!);
+            if(tls){
+              this.createTLS(this.socket!).then(()=>{
+                this.handleConnect(this.socket!)
+              }).catch(err=>{
+                logger && logger("tls error", err);
+                this.emit("tlsError", new Error("TLS connect error " + err.message))
+              })
+            }else{
+              this.handleConnect(this.socket!);
+            }
           }
         );
       }
