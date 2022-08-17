@@ -44,7 +44,7 @@ class MgImap extends events_1.EventEmitter {
     }
     async connect() {
         if (!this.socket) {
-            const { host, port, logger, tlsPort, proxy } = this.options;
+            const { host, port, logger, tlsPort, proxy, tls } = this.options;
             this.initParser();
             if (proxy) {
                 try {
@@ -79,9 +79,19 @@ class MgImap extends events_1.EventEmitter {
                 this.setSocketEvent();
                 this.socket.connect({
                     host,
-                    port,
+                    port: tls ? tlsPort : port,
                 }, () => {
-                    this.handleConnect(this.socket);
+                    if (tls) {
+                        this.createTLS(this.socket).then(() => {
+                            this.handleConnect(this.socket);
+                        }).catch(err => {
+                            logger && logger("tls error", err);
+                            this.emit("tlsError", new Error("TLS connect error " + err.message));
+                        });
+                    }
+                    else {
+                        this.handleConnect(this.socket);
+                    }
                 });
             }
         }
@@ -185,7 +195,7 @@ class MgImap extends events_1.EventEmitter {
                     resolve(this.searchUids);
                 }
                 else {
-                    reject(res.text);
+                    reject(this.currCmd + "\r\n" + res.text);
                 }
             });
         });
@@ -208,7 +218,7 @@ class MgImap extends events_1.EventEmitter {
                     resolve(this.searchUids);
                 }
                 else {
-                    reject(res.text);
+                    reject(this.currCmd + "\r\n" + res.text);
                 }
             });
         });
@@ -352,12 +362,12 @@ class MgImap extends events_1.EventEmitter {
         this.parser = new Parser_1.default(logger);
         this.parser.on("tagged", (res) => {
             // console.log(res);
-            this.currCmd = "";
             const handler = this.tagHandlerMap.get(res.tag);
             if (handler) {
                 handler(res);
                 this.tagHandlerMap.delete(res.tag);
             }
+            this.currCmd = "";
             if (this.cmdQueue.length > 0) {
                 const c = this.cmdQueue.shift();
                 this.sendCmd(c.cmd, c.callback);
@@ -479,7 +489,7 @@ class MgImap extends events_1.EventEmitter {
             this.emit("timeout");
         });
         this.socket.on("data", (data) => {
-            logger && logger(`<=`, data.toString("utf-8").substring(0, 50));
+            logger && logger(`<=`, data.toString("utf-8"));
             this.parser?.parse(data);
         });
     }

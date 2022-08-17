@@ -13,6 +13,7 @@ interface MgImapOptions {
     port: number;
     tlsPort: number;
     tls?: boolean;
+    startTLS?: boolean;
     autoLogin?: boolean;
     keepalive?: boolean;
     socketTimeout?: number;
