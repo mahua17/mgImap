@@ -1,6 +1,6 @@
 {
   "name": "mgimap",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "node imap proxy",
   "main": "dist/MgImap.js",
   "files": [

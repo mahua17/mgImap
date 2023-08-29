@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MgImap = void 0;
+exports.simpleParser = exports.MgImap = void 0;
 const events_1 = require("events");
 const net_1 = require("net");
 const tls = require("tls");
 const socks_1 = require("socks");
 const Parser_1 = require("./Parser");
 const mailparser_1 = require("mailparser");
+Object.defineProperty(exports, "simpleParser", { enumerable: true, get: function () { return mailparser_1.simpleParser; } });
 const buildSearchQuery = require("./funs").buildSearchQuery;
 const utf7 = require("utf7").imap;
 class MgImap extends events_1.EventEmitter {

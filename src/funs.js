@@ -233,6 +233,6 @@ function hasNonASCII(str) {
   return false;
 }
 
-module.exports = {
+export {
   buildSearchQuery
 }

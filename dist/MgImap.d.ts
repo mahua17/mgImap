@@ -5,7 +5,7 @@
 import { EventEmitter } from "events";
 import { Socket } from "net";
 import * as tls from "tls";
-import { ParsedMail } from "mailparser";
+import { ParsedMail, simpleParser } from "mailparser";
 interface MgImapOptions {
     user: string;
     password: string;
@@ -182,4 +182,4 @@ declare class MgImap extends EventEmitter implements MgImap {
     private initParser;
     private setSocketEvent;
 }
-export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse, ParsedMail };
+export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse, ParsedMail, simpleParser };

@@ -653,4 +653,4 @@ class MgImap extends EventEmitter implements MgImap {
 }
 
 
-export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse, ParsedMail }
+export { MgImap, MgImapOptions, TagResponse, UntaggedResponse, OpenBoxResponse, ParsedMail, simpleParser }
